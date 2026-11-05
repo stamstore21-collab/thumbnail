@@ -98,6 +98,83 @@ function muatGambar(file) {
   });
 }
 
+// ============ PEMILIH LAYOUT ============
+function pilihLayout(n, rasio) {
+  if (n === 1) return rasio === '16:9' ? 'HERO-R' : 'HERO-C';
+  if (n === 2) return rasio === '16:9' ? 'SPLIT'  : 'STACK';
+  return rasio === '16:9' ? 'TRIO' : 'CAROUSEL';
+}
+
+// ============ KONFIG LAYOUT (fraksi 0-1 dari W/H) ============
+function getConfig(layout, W, H) {
+  const L = {
+    'HERO-R': {
+      text:     { x: 0.04, y: 0.55, maxW: 0.62, align: 'left' },
+      subjects: [{ x: 0.52, y: 0.10, h: 0.85 }],
+      badge:    { x: 0.04, y: 0.06 },
+    },
+    'HERO-C': {
+      text:     { x: 0.05, y: 0.55, maxW: 0.90, align: 'center' },
+      subjects: [{ x: 0.19, y: 0.45, h: 0.60 }],
+      badge:    { x: 0.06, y: 0.05 },
+    },
+    'SPLIT': {
+      text:     { x: 0.04, y: 0.55, maxW: 0.50, align: 'left' },
+      subjects: [
+        { x: 0.55, y: 0.20, h: 0.75 },
+        { x: 0.80, y: 0.20, h: 0.75 },
+      ],
+      badge:    { x: 0.04, y: 0.06 },
+    },
+    'STACK': {
+      text:     { x: 0.05, y: 0.35, maxW: 0.90, align: 'center' },
+      subjects: [
+        { x: 0.15, y: 0.50, h: 0.28 },
+        { x: 0.15, y: 0.78, h: 0.28 },
+      ],
+      badge:    { x: 0.06, y: 0.05 },
+    },
+    'TRIO': {
+      text:     { x: 0.04, y: 0.55, maxW: 0.42, align: 'left' },
+      subjects: [
+        { x: 0.45, y: 0.25, h: 0.65 },
+        { x: 0.62, y: 0.30, h: 0.60 },
+        { x: 0.78, y: 0.25, h: 0.65 },
+      ],
+      badge:    { x: 0.04, y: 0.06 },
+    },
+    'CAROUSEL': {
+      text:     { x: 0.05, y: 0.28, maxW: 0.90, align: 'center' },
+      subjects: [
+        { x: 0.15, y: 0.42, h: 0.42 },
+        { x: 0.10, y: 0.80, h: 0.18 },
+        { x: 0.55, y: 0.80, h: 0.18 },
+      ],
+      badge:    { x: 0.06, y: 0.05 },
+    },
+  };
+
+  const cfg = L[layout];
+  return {
+    text: {
+      x: Math.round(cfg.text.x * W),
+      y: Math.round(cfg.text.y * H),
+      maxW: Math.round(cfg.text.maxW * W),
+      align: cfg.text.align,
+    },
+    subjects: cfg.subjects.map(s => ({
+      x: Math.round(s.x * W),
+      y: Math.round(s.y * H),
+      h: Math.round(s.h * H),
+    })),
+    badge: {
+      x: Math.round(cfg.badge.x * W),
+      y: Math.round(cfg.badge.y * H),
+    },
+  };
+}
+
+// ============ FUNGSI RENDER UTAMA ============
 function gambarThumbnail(images, judul, rasio, style, opts) {
   const size = rasio === '16:9' ? { w: 1280, h: 720 } : { w: 1080, h: 1920 };
   const canvas = document.createElement('canvas');
@@ -105,7 +182,10 @@ function gambarThumbnail(images, judul, rasio, style, opts) {
   canvas.height = size.h;
   const ctx = canvas.getContext('2d');
 
-  // 1. Background: gambar pertama, di-blur dan digelapkan
+  const layout = pilihLayout(images.length, rasio);
+  const cfg = getConfig(layout, size.w, size.h);
+
+  // ---------- 1. BACKGROUND (gambar pertama di-blur) ----------
   const main = images[0];
   const scale = Math.max(size.w / main.width, size.h / main.height);
   const sw = size.w / scale, sh = size.h / scale;
@@ -116,41 +196,72 @@ function gambarThumbnail(images, judul, rasio, style, opts) {
   ctx.drawImage(main, sx, sy, sw, sh, -20, -20, size.w + 40, size.h + 40);
   ctx.restore();
 
-  // 2. Subjek utama (gambar asli, tidak diblur) - taruh sesuai rasio
-  const subjekH = rasio === '16:9' ? size.h * 0.85 : size.h * 0.62;
-  const subjekW = subjekH * (main.width / main.height);
-  let subjekX, subjekY;
-  if (rasio === '16:9') {
-    subjekX = size.w - subjekW - size.w * 0.02;
-    subjekY = size.h - subjekH - size.h * 0.03;
-  } else {
-    subjekX = (size.w - subjekW) / 2;
-    subjekY = size.h - subjekH - size.h * 0.02;
+  // ---------- 2. SUBJEK sesuai layout ----------
+  for (let i = 0; i < cfg.subjects.length; i++) {
+    if (i >= images.length) break;
+    const pos = cfg.subjects[i];
+    const img = images[i];
+
+    const subjekH = pos.h;
+    const subjekW = subjekH * (img.width / img.height);
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+    ctx.shadowBlur = 40;
+    ctx.shadowOffsetX = 12;
+    ctx.shadowOffsetY = 20;
+    ctx.drawImage(img, pos.x, pos.y, subjekW, subjekH);
+    ctx.restore();
   }
 
-  ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,0.8)';
-  ctx.shadowBlur = 40;
-  ctx.shadowOffsetX = 12;
-  ctx.shadowOffsetY = 20;
-  ctx.drawImage(main, subjekX, subjekY, subjekW, subjekH);
-  ctx.restore();
+  // ---------- 3. GRADIENT GELAP ----------
+  if (rasio === '16:9') {
+    // bawah
+    const gB = ctx.createLinearGradient(0, size.h * 0.4, 0, size.h);
+    gB.addColorStop(0, 'rgba(0,0,0,0)');
+    gB.addColorStop(1, 'rgba(0,0,0,0.92)');
+    ctx.fillStyle = gB;
+    ctx.fillRect(0, 0, size.w, size.h);
+    // kiri
+    const gL = ctx.createLinearGradient(0, 0, size.w * 0.55, 0);
+    gL.addColorStop(0, 'rgba(0,0,0,0.85)');
+    gL.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = gL;
+    ctx.fillRect(0, 0, size.w, size.h);
+  } else {
+    // bawah
+    const gB = ctx.createLinearGradient(0, size.h * 0.5, 0, size.h);
+    gB.addColorStop(0, 'rgba(0,0,0,0)');
+    gB.addColorStop(1, 'rgba(0,0,0,0.94)');
+    ctx.fillStyle = gB;
+    ctx.fillRect(0, 0, size.w, size.h);
+    // atas
+    const gT = ctx.createLinearGradient(0, 0, 0, size.h * 0.35);
+    gT.addColorStop(0, 'rgba(0,0,0,0.7)');
+    gT.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = gT;
+    ctx.fillRect(0, 0, size.w, size.h);
+  }
 
-  // 3. Gradient gelap di bawah untuk tempat teks
-  const gradient = ctx.createLinearGradient(0, size.h * 0.4, 0, size.h);
-  gradient.addColorStop(0, 'rgba(0,0,0,0)');
-  gradient.addColorStop(1, 'rgba(0,0,0,0.95)');
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, size.w, size.h);
-
-  // 4. Teks judul dengan outline
+  // ---------- 4. TEKS JUDUL ----------
   ctx.textBaseline = 'top';
-  ctx.font = `900 ${rasio === '16:9' ? 130 : 110}px Impact, Arial Black, sans-serif`;
   const text = judul.toUpperCase();
+  const maxW = cfg.text.maxW;
+
+  // auto-fit font
+  let fontSize = rasio === '16:9' ? 180 : 160;
+  const fontFamily = "Impact, 'Arial Black', sans-serif";
+  while (fontSize > 40) {
+    ctx.font = `900 ${fontSize}px ${fontFamily}`;
+    if (ctx.measureText(text).width <= maxW) break;
+    fontSize -= 6;
+  }
+  ctx.font = `900 ${fontSize}px ${fontFamily}`;
+
+  // wrap
   const words = text.split(' ');
   const lines = [];
   let cur = '';
-  const maxW = size.w * 0.9;
   for (const w of words) {
     const test = (cur + ' ' + w).trim();
     if (ctx.measureText(test).width <= maxW) cur = test;
@@ -158,16 +269,32 @@ function gambarThumbnail(images, judul, rasio, style, opts) {
   }
   if (cur) lines.push(cur);
 
-  const lineH = (rasio === '16:9' ? 130 : 110) * 1.1;
-  const startY = size.h * (rasio === '16:9' ? 0.55 : 0.3);
+  const maxLines = rasio === '16:9' ? 2 : 3;
+  if (lines.length > maxLines) {
+    fontSize = Math.round(fontSize * 0.8);
+    ctx.font = `900 ${fontSize}px ${fontFamily}`;
+    // re-wrap
+    lines.length = 0;
+    cur = '';
+    for (const w of words) {
+      const test = (cur + ' ' + w).trim();
+      if (ctx.measureText(test).width <= maxW) cur = test;
+      else { if (cur) lines.push(cur); cur = w; }
+    }
+    if (cur) lines.push(cur);
+  }
 
-    lines.forEach((line, i) => {
+  const lineH = fontSize * 1.05;
+  const totalH = lineH * lines.length;
+  const y0 = cfg.text.y - totalH / 2;
+
+  lines.forEach((line, i) => {
     const lw = ctx.measureText(line).width;
-    const x = (size.w - lw) / 2;
-    const y = startY + i * lineH;
+    const x = cfg.text.align === 'center' ? (size.w - lw) / 2 : cfg.text.x;
+    const y = y0 + i * lineH;
 
     ctx.strokeStyle = style.stroke;
-    ctx.lineWidth = 18;
+    ctx.lineWidth = Math.max(10, fontSize / 12);
     ctx.lineJoin = 'round';
     ctx.strokeText(line, x, y);
 
@@ -175,32 +302,25 @@ function gambarThumbnail(images, judul, rasio, style, opts) {
     ctx.fillText(line, x, y);
   });
 
-  // ============ BADGE ============
+  // ---------- 5. BADGE ----------
   if (opts.badge && opts.badgeText) {
     const fs = 42;
-    ctx.font = `800 ${fs}px Impact, Arial Black, sans-serif`;
+    ctx.font = `800 ${fs}px ${fontFamily}`;
     const txt = opts.badgeText;
     const tw = ctx.measureText(txt).width;
     const pad = 22;
     const bw = tw + pad * 2;
     const bh = fs + pad;
 
-    // posisi: kiri atas, dengan margin
-    const bx = size.w * 0.04;
-    const by = size.h * (rasio === '16:9' ? 0.06 : 0.05);
+    const bx = cfg.badge.x;
+    const by = cfg.badge.y;
 
-    // kotak badge
     ctx.fillStyle = style.accent;
     ctx.beginPath();
-    if (ctx.roundRect) {
-      ctx.roundRect(bx, by, bw, bh, 16);
-    } else {
-      // fallback untuk browser lama
-      ctx.rect(bx, by, bw, bh);
-    }
+    if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 16);
+    else ctx.rect(bx, by, bw, bh);
     ctx.fill();
 
-    // teks badge putih
     ctx.fillStyle = '#FFFFFF';
     ctx.textBaseline = 'middle';
     ctx.fillText(txt, bx + pad, by + bh / 2);
@@ -209,7 +329,7 @@ function gambarThumbnail(images, judul, rasio, style, opts) {
 
   return canvas;
 }
-
+ 
 tombol.addEventListener('click', async () => {
   const files = Array.from(inputGambar.files).slice(0, 3);
   if (!files.length) return alert('Upload minimal 1 gambar!');
