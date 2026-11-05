@@ -76,10 +76,16 @@
   <input type="checkbox" id="circleOn" style="width:auto">
   <span style="font-size:14px;opacity:.85">Tampilkan lingkaran ⭕</span>
 </label>
+
+<label style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px;background:#1a1d24;border-radius:6px">
+  <input type="checkbox" id="rembgOn" style="width:auto">
+  <span style="font-size:14px;opacity:.85">🤖 Hapus background (AI, lambat)</span>
+</label>
  
 <button id="tombol">🚀 Generate</button>
 
 <div class="hasil" id="hasil"></div>
+<div id="status" style="margin-top:12px;font-size:13px;opacity:.7;min-height:18px"></div> 
 
 <script>
 const inputJudul = document.getElementById('judul');
@@ -87,6 +93,44 @@ const inputBadge = document.getElementById('badge');
 const checkboxBadge = document.getElementById('badgeOn'); 
 const checkboxArrow = document.getElementById('arrowOn');
 const checkboxCircle = document.getElementById('circleOn'); 
+const checkboxRembg = document.getElementById('rembgOn');
+const elStatus = document.getElementById('status');
+
+// Variabel untuk simpan library AI (di-load sekali)
+let bgRemovalLib = null;
+
+// Fungsi status
+function setStatus(msg) {
+  elStatus.textContent = msg;
+}
+
+// Fungsi load library AI (sekali saja)
+async function loadBgRemoval() {
+  if (bgRemovalLib) return bgRemovalLib;
+  setStatus('⏳ Memuat modul AI (sekali saja, ~5MB)...');
+  const mod = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.5/+esm');
+  bgRemovalLib = mod.removeBackground || mod.default || mod;
+  return bgRemovalLib;
+}
+
+// Fungsi hapus background satu gambar
+async function hapusBackground(img) {
+  const lib = await loadBgRemoval();
+  const blob = await fetch(img.src).then(r => r.blob());
+  const resultBlob = await lib(blob, {
+    progress: (key, cur, total) => {
+      if (key.startsWith('fetch') && total) {
+        setStatus(`⏳ Download model AI: ${Math.round((cur / total) * 100)}%`);
+      }
+    },
+  });
+  return new Promise((resolve) => {
+    const im = new Image();
+    im.onload = () => resolve(im);
+    im.src = URL.createObjectURL(resultBlob);
+  });
+}
+ 
 const inputGambar = document.getElementById('gambar');
 const selectRasio = document.getElementById('rasio');
 const tombol = document.getElementById('tombol');
@@ -402,11 +446,36 @@ tombol.addEventListener('click', async () => {
   if (!files.length) return alert('Upload minimal 1 gambar!');
   if (!inputJudul.value.trim()) return alert('Isi judul dulu!');
 
-  tombol.disabled = true;
+    tombol.disabled = true;
   tombol.textContent = '⏳ Memproses...';
   hasil.innerHTML = '';
+  setStatus('');
 
-  const images = await Promise.all(files.map(muatGambar));
+  let images = await Promise.all(files.map(muatGambar));
+
+  // === HAPUS BACKGROUND (kalau dicentang) ===
+  if (checkboxRembg.checked) {
+    try {
+      const processed = [];
+      for (let i = 0; i < images.length; i++) {
+        setStatus(`🤖 Menghapus background gambar #${i + 1} dari ${images.length}...`);
+        try {
+          const cut = await hapusBackground(images[i]);
+          processed.push(cut);
+        } catch (err) {
+          console.warn('Gagal hapus bg gambar #' + (i + 1), err);
+          setStatus(`⚠️ Gagal hapus bg #${i + 1}, pakai gambar asli.`);
+          processed.push(images[i]);
+        }
+      }
+      images = processed;
+      setStatus('✅ Background dihapus. Merender thumbnail...');
+    } catch (err) {
+      console.error('Error AI:', err);
+      setStatus('⚠️ AI gagal load, pakai gambar asli.');
+    }
+  }
+
   const rasioOpt = selectRasio.value;
   const targets = rasioOpt === 'both' ? ['16:9', '9:16'] : [rasioOpt];
   const styleKey = selectStyle.value;
@@ -433,6 +502,7 @@ tombol.addEventListener('click', async () => {
 
     hasil.appendChild(card);
   }
+  setStatus('✅ Selesai!');
 
   tombol.disabled = false;
   tombol.textContent = '🚀 Generate';
