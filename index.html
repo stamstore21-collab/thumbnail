@@ -50,6 +50,15 @@
   <option value="9:16">9:16</option>
 </select>
 
+<label>Style Warna</label>
+<select id="style">
+  <option value="boldYellow">🟡 Bold Yellow</option>
+  <option value="neonGreen">🟢 Neon Green</option>
+  <option value="cleanWhite">⚪ Clean White</option>
+  <option value="redAlert">🔴 Red Alert</option>
+  <option value="cyanPop">🔵 Cyan Pop</option>
+</select>
+ 
 <button id="tombol">🚀 Generate</button>
 
 <div class="hasil" id="hasil"></div>
@@ -60,6 +69,16 @@ const inputGambar = document.getElementById('gambar');
 const selectRasio = document.getElementById('rasio');
 const tombol = document.getElementById('tombol');
 const hasil = document.getElementById('hasil');
+const selectStyle = document.getElementById('style');
+
+// Definisi 5 style warna
+const STYLES = {
+  boldYellow: { text: '#FFD700', stroke: '#000000' },
+  neonGreen:  { text: '#39FF14', stroke: '#000000' },
+  cleanWhite: { text: '#FFFFFF', stroke: '#000000' },
+  redAlert:   { text: '#FF2D2D', stroke: '#FFFFFF' },
+  cyanPop:    { text: '#00E5FF', stroke: '#000000' },
+}; 
 
 function muatGambar(file) {
   return new Promise((resolve) => {
@@ -69,7 +88,7 @@ function muatGambar(file) {
   });
 }
 
-function gambarThumbnail(images, judul, rasio) {
+function gambarThumbnail(images, judul, rasio, style) {
   const size = rasio === '16:9' ? { w: 1280, h: 720 } : { w: 1080, h: 1920 };
   const canvas = document.createElement('canvas');
   canvas.width = size.w;
@@ -137,12 +156,12 @@ function gambarThumbnail(images, judul, rasio) {
     const x = (size.w - lw) / 2;
     const y = startY + i * lineH;
 
-    ctx.strokeStyle = '#000';
+        ctx.strokeStyle = style.stroke;
     ctx.lineWidth = 18;
     ctx.lineJoin = 'round';
     ctx.strokeText(line, x, y);
 
-    ctx.fillStyle = '#FFD700';
+    ctx.fillStyle = style.text;
     ctx.fillText(line, x, y);
   });
 
@@ -161,9 +180,11 @@ tombol.addEventListener('click', async () => {
   const images = await Promise.all(files.map(muatGambar));
   const rasioOpt = selectRasio.value;
   const targets = rasioOpt === 'both' ? ['16:9', '9:16'] : [rasioOpt];
+  const styleKey = selectStyle.value;
+  const style = STYLES[styleKey];
 
   for (const r of targets) {
-    const canvas = gambarThumbnail(images, inputJudul.value, r);
+    const canvas = gambarThumbnail(images, inputJudul.value, r, style);
     const card = document.createElement('div');
     card.className = 'card';
     card.innerHTML = `<div style="margin-bottom:8px;font-size:13px;opacity:.7">Rasio ${r}</div>`;
