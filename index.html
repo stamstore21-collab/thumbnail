@@ -106,49 +106,50 @@ function pilihLayout(n, rasio) {
 }
 
 // ============ KONFIG LAYOUT (fraksi 0-1 dari W/H) ============
+// ============ KONFIG LAYOUT (fraksi 0-1 dari W/H) ============
 function getConfig(layout, W, H) {
   const L = {
     'HERO-R': {
-      text:     { x: 0.04, y: 0.55, maxW: 0.62, align: 'left' },
-      subjects: [{ x: 0.52, y: 0.10, h: 0.85 }],
+      text:     { x: 0.04, y: 0.82, maxW: 0.62, align: 'left' },
+      subjects: [{ x: 0.38, y: 0.05, h: 0.95 }],
       badge:    { x: 0.04, y: 0.06 },
     },
     'HERO-C': {
-      text:     { x: 0.05, y: 0.55, maxW: 0.90, align: 'center' },
-      subjects: [{ x: 0.19, y: 0.45, h: 0.60 }],
+      text:     { x: 0.05, y: 0.72, maxW: 0.92, align: 'center' },
+      subjects: [{ x: 0.10, y: 0.20, h: 0.72 }],
       badge:    { x: 0.06, y: 0.05 },
     },
     'SPLIT': {
-      text:     { x: 0.04, y: 0.55, maxW: 0.50, align: 'left' },
+      text:     { x: 0.04, y: 0.82, maxW: 0.52, align: 'left' },
       subjects: [
-        { x: 0.55, y: 0.20, h: 0.75 },
-        { x: 0.80, y: 0.20, h: 0.75 },
+        { x: 0.48, y: 0.10, h: 0.85 },
+        { x: 0.74, y: 0.15, h: 0.80 },
       ],
       badge:    { x: 0.04, y: 0.06 },
     },
     'STACK': {
-      text:     { x: 0.05, y: 0.35, maxW: 0.90, align: 'center' },
+      text:     { x: 0.05, y: 0.72, maxW: 0.92, align: 'center' },
       subjects: [
-        { x: 0.15, y: 0.50, h: 0.28 },
-        { x: 0.15, y: 0.78, h: 0.28 },
+        { x: 0.08, y: 0.30, h: 0.32 },
+        { x: 0.55, y: 0.30, h: 0.32 },
       ],
       badge:    { x: 0.06, y: 0.05 },
     },
     'TRIO': {
-      text:     { x: 0.04, y: 0.55, maxW: 0.42, align: 'left' },
+      text:     { x: 0.04, y: 0.82, maxW: 0.42, align: 'left' },
       subjects: [
-        { x: 0.45, y: 0.25, h: 0.65 },
-        { x: 0.62, y: 0.30, h: 0.60 },
-        { x: 0.78, y: 0.25, h: 0.65 },
+        { x: 0.42, y: 0.15, h: 0.75 },
+        { x: 0.58, y: 0.20, h: 0.70 },
+        { x: 0.74, y: 0.15, h: 0.75 },
       ],
       badge:    { x: 0.04, y: 0.06 },
     },
     'CAROUSEL': {
-      text:     { x: 0.05, y: 0.28, maxW: 0.90, align: 'center' },
+      text:     { x: 0.05, y: 0.78, maxW: 0.92, align: 'center' },
       subjects: [
-        { x: 0.15, y: 0.42, h: 0.42 },
-        { x: 0.10, y: 0.80, h: 0.18 },
-        { x: 0.55, y: 0.80, h: 0.18 },
+        { x: 0.10, y: 0.15, h: 0.50 },
+        { x: 0.08, y: 0.68, h: 0.22 },
+        { x: 0.55, y: 0.68, h: 0.22 },
       ],
       badge:    { x: 0.06, y: 0.05 },
     },
@@ -284,7 +285,7 @@ function gambarThumbnail(images, judul, rasio, style, opts) {
     if (cur) lines.push(cur);
   }
 
-  const lineH = fontSize * 1.05;
+    const lineH = fontSize * 1.05;
   const totalH = lineH * lines.length;
   const y0 = cfg.text.y - totalH / 2;
 
@@ -304,20 +305,20 @@ function gambarThumbnail(images, judul, rasio, style, opts) {
 
   // ---------- 5. BADGE ----------
   if (opts.badge && opts.badgeText) {
-    const fs = 42;
+    const fs = 64;
     ctx.font = `800 ${fs}px ${fontFamily}`;
     const txt = opts.badgeText;
     const tw = ctx.measureText(txt).width;
-    const pad = 22;
+    const pad = 28;
     const bw = tw + pad * 2;
-    const bh = fs + pad;
+    const bh = fs + pad * 1.2;
 
     const bx = cfg.badge.x;
     const by = cfg.badge.y;
 
     ctx.fillStyle = style.accent;
     ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 16);
+    if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 22);
     else ctx.rect(bx, by, bw, bh);
     ctx.fill();
 
