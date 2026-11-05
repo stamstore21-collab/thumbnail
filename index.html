@@ -66,6 +66,16 @@
   <input type="checkbox" id="badgeOn" checked style="width:auto">
   <span style="font-size:14px;opacity:.85">Tampilkan badge</span>
 </label>
+
+<label style="display:flex;align-items:center;gap:8px;margin-top:8px">
+  <input type="checkbox" id="arrowOn" style="width:auto">
+  <span style="font-size:14px;opacity:.85">Tampilkan panah ➡️</span>
+</label>
+
+<label style="display:flex;align-items:center;gap:8px;margin-top:4px">
+  <input type="checkbox" id="circleOn" style="width:auto">
+  <span style="font-size:14px;opacity:.85">Tampilkan lingkaran ⭕</span>
+</label>
  
 <button id="tombol">🚀 Generate</button>
 
@@ -75,6 +85,8 @@
 const inputJudul = document.getElementById('judul');
 const inputBadge = document.getElementById('badge');
 const checkboxBadge = document.getElementById('badgeOn'); 
+const checkboxArrow = document.getElementById('arrowOn');
+const checkboxCircle = document.getElementById('circleOn'); 
 const inputGambar = document.getElementById('gambar');
 const selectRasio = document.getElementById('rasio');
 const tombol = document.getElementById('tombol');
@@ -326,6 +338,60 @@ function gambarThumbnail(images, judul, rasio, style, opts) {
     ctx.textBaseline = 'middle';
     ctx.fillText(txt, bx + pad, by + bh / 2);
     ctx.textBaseline = 'top';
+     ctx.fillStyle = '#FFFFFF';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(txt, bx + pad, by + bh / 2);
+    ctx.textBaseline = 'top';
+  }
+
+  // ---------- 6. PANAH ----------
+  if (opts.arrow) {
+    const startX = size.w * 0.30;
+    const startY = size.h * 0.25;
+    const endX   = size.w * 0.52;
+    const endY   = size.h * 0.42;
+    const arrowW = 14;
+
+    ctx.strokeStyle = style.accent;
+    ctx.lineWidth = arrowW;
+    ctx.lineCap = 'round';
+
+    // batang panah
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(endX, endY);
+    ctx.stroke();
+
+    // kepala panah (2 garis)
+    const angle = Math.atan2(endY - startY, endX - startX);
+    const headLen = arrowW * 2.5;
+    const spread = Math.PI / 6;  // 30 derajat
+
+    ctx.beginPath();
+    ctx.moveTo(endX, endY);
+    ctx.lineTo(
+      endX - headLen * Math.cos(angle - spread),
+      endY - headLen * Math.sin(angle - spread)
+    );
+    ctx.moveTo(endX, endY);
+    ctx.lineTo(
+      endX - headLen * Math.cos(angle + spread),
+      endY - headLen * Math.sin(angle + spread)
+    );
+    ctx.stroke();
+  }
+
+  // ---------- 7. LINGKARAN HIGHLIGHT ----------
+  if (opts.circle) {
+    const cx = size.w * (rasio === '16:9' ? 0.72 : 0.50);
+    const cy = size.h * (rasio === '16:9' ? 0.45 : 0.40);
+    const radius = Math.min(size.w, size.h) * (rasio === '16:9' ? 0.18 : 0.20);
+
+    ctx.strokeStyle = style.accent;
+    ctx.lineWidth = 14;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.stroke();
   }
 
   return canvas;
@@ -343,11 +409,13 @@ tombol.addEventListener('click', async () => {
   const images = await Promise.all(files.map(muatGambar));
   const rasioOpt = selectRasio.value;
   const targets = rasioOpt === 'both' ? ['16:9', '9:16'] : [rasioOpt];
-   const styleKey = selectStyle.value;
+  const styleKey = selectStyle.value;
   const style = STYLES[styleKey];
   const opts = {
     badge: checkboxBadge.checked,
     badgeText: inputBadge.value.trim(),
+    arrow: checkboxArrow.checked,
+    circle: checkboxCircle.checked,
   };
 
   for (const r of targets) {
