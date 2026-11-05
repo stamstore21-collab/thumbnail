@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thumbnail Generator</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 16px;
+    font-family: system-ui, sans-serif;
+    background: #0e1117; color: #fafafa;
+  }
+  h1 { font-size: 20px; margin: 0 0 16px; }
+  label { display: block; margin: 12px 0 4px; font-size: 13px; opacity: .8; }
+  input, select, button {
+    width: 100%; padding: 10px; border-radius: 8px;
+    border: 1px solid #333; background: #1a1d24; color: #fff;
+    font-size: 14px; font-family: inherit;
+  }
+  button {
+    margin-top: 16px; background: #ff0000; border: 0;
+    font-weight: bold; cursor: pointer; font-size: 15px;
+  }
+  button:hover { filter: brightness(1.15); }
+  .hasil { margin-top: 20px; display: grid; gap: 16px; }
+  .card { background: #1a1d24; padding: 12px; border-radius: 10px; }
+  .card canvas { width: 100%; display: block; border-radius: 6px; }
+  .card a {
+    display: block; margin-top: 8px; text-align: center;
+    padding: 10px; background: #262730; color: #fff;
+    text-decoration: none; border-radius: 6px; font-size: 13px;
+  }
+</style>
+</head>
+<body>
+
+<h1>🎬 Thumbnail Generator</h1>
+
+<label>Judul video</label>
+<input type="text" id="judul" value="TUTORIAL PYTHON 2025">
+
+<label>Gambar (1-3)</label>
+<input type="file" id="gambar" accept="image/*" multiple>
+
+<label>Rasio</label>
+<select id="rasio">
+  <option value="both">Keduanya</option>
+  <option value="16:9">16:9</option>
+  <option value="9:16">9:16</option>
+</select>
+
+<button id="tombol">🚀 Generate</button>
+
+<div class="hasil" id="hasil"></div>
+
+<script>
+const inputJudul = document.getElementById('judul');
+const inputGambar = document.getElementById('gambar');
+const selectRasio = document.getElementById('rasio');
+const tombol = document.getElementById('tombol');
+const hasil = document.getElementById('hasil');
+
+function muatGambar(file) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+function gambarThumbnail(images, judul, rasio) {
+  const size = rasio === '16:9' ? { w: 1280, h: 720 } : { w: 1080, h: 1920 };
+  const canvas = document.createElement('canvas');
+  canvas.width = size.w;
+  canvas.height = size.h;
+  const ctx = canvas.getContext('2d');
+
+  // 1. Background: gambar pertama, di-blur dan digelapkan
+  const main = images[0];
+  const scale = Math.max(size.w / main.width, size.h / main.height);
+  const sw = size.w / scale, sh = size.h / scale;
+  const sx = (main.width - sw) / 2, sy = (main.height - sh) / 2;
+
+  ctx.save();
+  ctx.filter = 'blur(40px) brightness(0.4)';
+  ctx.drawImage(main, sx, sy, sw, sh, -20, -20, size.w + 40, size.h + 40);
+  ctx.restore();
+
+  // 2. Subjek utama (gambar asli, tidak diblur) - taruh sesuai rasio
+  const subjekH = rasio === '16:9' ? size.h * 0.85 : size.h * 0.62;
+  const subjekW = subjekH * (main.width / main.height);
+  let subjekX, subjekY;
+  if (rasio === '16:9') {
+    subjekX = size.w - subjekW - size.w * 0.02;
+    subjekY = size.h - subjekH - size.h * 0.03;
+  } else {
+    subjekX = (size.w - subjekW) / 2;
+    subjekY = size.h - subjekH - size.h * 0.02;
+  }
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.8)';
+  ctx.shadowBlur = 40;
+  ctx.shadowOffsetX = 12;
+  ctx.shadowOffsetY = 20;
+  ctx.drawImage(main, subjekX, subjekY, subjekW, subjekH);
+  ctx.restore();
+
+  // 3. Gradient gelap di bawah untuk tempat teks
+  const gradient = ctx.createLinearGradient(0, size.h * 0.4, 0, size.h);
+  gradient.addColorStop(0, 'rgba(0,0,0,0)');
+  gradient.addColorStop(1, 'rgba(0,0,0,0.95)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size.w, size.h);
+
+  // 4. Teks judul dengan outline
+  ctx.textBaseline = 'top';
+  ctx.font = `900 ${rasio === '16:9' ? 130 : 110}px Impact, Arial Black, sans-serif`;
+  const text = judul.toUpperCase();
+  const words = text.split(' ');
+  const lines = [];
+  let cur = '';
+  const maxW = size.w * 0.9;
+  for (const w of words) {
+    const test = (cur + ' ' + w).trim();
+    if (ctx.measureText(test).width <= maxW) cur = test;
+    else { if (cur) lines.push(cur); cur = w; }
+  }
+  if (cur) lines.push(cur);
+
+  const lineH = (rasio === '16:9' ? 130 : 110) * 1.1;
+  const startY = size.h * (rasio === '16:9' ? 0.55 : 0.3);
+
+  lines.forEach((line, i) => {
+    const lw = ctx.measureText(line).width;
+    const x = (size.w - lw) / 2;
+    const y = startY + i * lineH;
+
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 18;
+    ctx.lineJoin = 'round';
+    ctx.strokeText(line, x, y);
+
+    ctx.fillStyle = '#FFD700';
+    ctx.fillText(line, x, y);
+  });
+
+  return canvas;
+}
+
+tombol.addEventListener('click', async () => {
+  const files = Array.from(inputGambar.files).slice(0, 3);
+  if (!files.length) return alert('Upload minimal 1 gambar!');
+  if (!inputJudul.value.trim()) return alert('Isi judul dulu!');
+
+  tombol.disabled = true;
+  tombol.textContent = '⏳ Memproses...';
+  hasil.innerHTML = '';
+
+  const images = await Promise.all(files.map(muatGambar));
+  const rasioOpt = selectRasio.value;
+  const targets = rasioOpt === 'both' ? ['16:9', '9:16'] : [rasioOpt];
+
+  for (const r of targets) {
+    const canvas = gambarThumbnail(images, inputJudul.value, r);
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<div style="margin-bottom:8px;font-size:13px;opacity:.7">Rasio ${r}</div>`;
+    card.appendChild(canvas);
+
+    const link = document.createElement('a');
+    link.href = canvas.toDataURL('image/png');
+    link.download = 'thumbnail_' + r.replace(':', 'x') + '.png';
+    link.textContent = '⬇️ Download ' + r;
+    card.appendChild(link);
+
+    hasil.appendChild(card);
+  }
+
+  tombol.disabled = false;
+  tombol.textContent = '🚀 Generate';
+});
+</script>
+
+</body>
+</html>
