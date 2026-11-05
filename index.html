@@ -58,6 +58,14 @@
   <option value="redAlert">🔴 Red Alert</option>
   <option value="cyanPop">🔵 Cyan Pop</option>
 </select>
+
+<label>Teks Badge</label>
+<input type="text" id="badge" value="BARU!" placeholder="BARU! / TUTORIAL / EP.5">
+
+<label style="display:flex;align-items:center;gap:8px;margin-top:8px">
+  <input type="checkbox" id="badgeOn" checked style="width:auto">
+  <span style="font-size:14px;opacity:.85">Tampilkan badge</span>
+</label>
  
 <button id="tombol">🚀 Generate</button>
 
@@ -65,6 +73,8 @@
 
 <script>
 const inputJudul = document.getElementById('judul');
+const inputBadge = document.getElementById('badge');
+const checkboxBadge = document.getElementById('badgeOn'); 
 const inputGambar = document.getElementById('gambar');
 const selectRasio = document.getElementById('rasio');
 const tombol = document.getElementById('tombol');
@@ -73,12 +83,12 @@ const selectStyle = document.getElementById('style');
 
 // Definisi 5 style warna
 const STYLES = {
-  boldYellow: { text: '#FFD700', stroke: '#000000' },
-  neonGreen:  { text: '#39FF14', stroke: '#000000' },
-  cleanWhite: { text: '#FFFFFF', stroke: '#000000' },
-  redAlert:   { text: '#FF2D2D', stroke: '#FFFFFF' },
-  cyanPop:    { text: '#00E5FF', stroke: '#000000' },
-}; 
+  boldYellow: { text: '#FFD700', stroke: '#000000', accent: '#FF3B30' },
+  neonGreen:  { text: '#39FF14', stroke: '#000000', accent: '#39FF14' },
+  cleanWhite: { text: '#FFFFFF', stroke: '#000000', accent: '#00A8FF' },
+  redAlert:   { text: '#FF2D2D', stroke: '#FFFFFF', accent: '#FF2D2D' },
+  cyanPop:    { text: '#00E5FF', stroke: '#000000', accent: '#00E5FF' },
+};
 
 function muatGambar(file) {
   return new Promise((resolve) => {
@@ -88,7 +98,7 @@ function muatGambar(file) {
   });
 }
 
-function gambarThumbnail(images, judul, rasio, style) {
+function gambarThumbnail(images, judul, rasio, style, opts) {
   const size = rasio === '16:9' ? { w: 1280, h: 720 } : { w: 1080, h: 1920 };
   const canvas = document.createElement('canvas');
   canvas.width = size.w;
@@ -151,12 +161,12 @@ function gambarThumbnail(images, judul, rasio, style) {
   const lineH = (rasio === '16:9' ? 130 : 110) * 1.1;
   const startY = size.h * (rasio === '16:9' ? 0.55 : 0.3);
 
-  lines.forEach((line, i) => {
+    lines.forEach((line, i) => {
     const lw = ctx.measureText(line).width;
     const x = (size.w - lw) / 2;
     const y = startY + i * lineH;
 
-        ctx.strokeStyle = style.stroke;
+    ctx.strokeStyle = style.stroke;
     ctx.lineWidth = 18;
     ctx.lineJoin = 'round';
     ctx.strokeText(line, x, y);
@@ -164,6 +174,38 @@ function gambarThumbnail(images, judul, rasio, style) {
     ctx.fillStyle = style.text;
     ctx.fillText(line, x, y);
   });
+
+  // ============ BADGE ============
+  if (opts.badge && opts.badgeText) {
+    const fs = 42;
+    ctx.font = `800 ${fs}px Impact, Arial Black, sans-serif`;
+    const txt = opts.badgeText;
+    const tw = ctx.measureText(txt).width;
+    const pad = 22;
+    const bw = tw + pad * 2;
+    const bh = fs + pad;
+
+    // posisi: kiri atas, dengan margin
+    const bx = size.w * 0.04;
+    const by = size.h * (rasio === '16:9' ? 0.06 : 0.05);
+
+    // kotak badge
+    ctx.fillStyle = style.accent;
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(bx, by, bw, bh, 16);
+    } else {
+      // fallback untuk browser lama
+      ctx.rect(bx, by, bw, bh);
+    }
+    ctx.fill();
+
+    // teks badge putih
+    ctx.fillStyle = '#FFFFFF';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(txt, bx + pad, by + bh / 2);
+    ctx.textBaseline = 'top';
+  }
 
   return canvas;
 }
@@ -180,11 +222,15 @@ tombol.addEventListener('click', async () => {
   const images = await Promise.all(files.map(muatGambar));
   const rasioOpt = selectRasio.value;
   const targets = rasioOpt === 'both' ? ['16:9', '9:16'] : [rasioOpt];
-  const styleKey = selectStyle.value;
+   const styleKey = selectStyle.value;
   const style = STYLES[styleKey];
+  const opts = {
+    badge: checkboxBadge.checked,
+    badgeText: inputBadge.value.trim(),
+  };
 
   for (const r of targets) {
-    const canvas = gambarThumbnail(images, inputJudul.value, r, style);
+    const canvas = gambarThumbnail(images, inputJudul.value, r, style, opts);
     const card = document.createElement('div');
     card.className = 'card';
     card.innerHTML = `<div style="margin-bottom:8px;font-size:13px;opacity:.7">Rasio ${r}</div>`;
